@@ -1,0 +1,195 @@
+====Step1:Notification manager===
+class MyAppsNotificationManager {
+
+    private Context context;
+
+    private static MyAppsNotificationManager instance;
+    private NotificationManagerCompat notificationManagerCompat;
+    private NotificationManager notificationManager;
+
+    private MyAppsNotificationManager(Context context){
+        this.context = context;
+        notificationManagerCompat = NotificationManagerCompat.from(context);
+        notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+    }
+
+    public static MyAppsNotificationManager getInstance(Context context){
+        if(instance==null){
+            instance = new MyAppsNotificationManager(context);
+        }
+        return instance;
+    }
+
+    public void registerNotificationChannelChannel(String channelId, String channelName, String channelDescription) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel notificationChannel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_DEFAULT);
+            notificationChannel.setDescription(channelDescription);
+            NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(notificationChannel);
+        }
+    }
+
+    public void triggerNotification(Class targetNotificationActivity, String channelId, String title, String text, String bigText, int priority, boolean autoCancel, int notificationId){
+
+        Intent intent = new Intent(context, targetNotificationActivity);
+        intent.putExtra("count", title);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0); //GJee:Pending intent has "intent" for external party(eg OS here_
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context,channelId)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_icon_large))
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(bigText))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setChannelId(channelId) //GJEE: channelID is required, if you want to disable a pariticular channelid..in rivers case might be user doesn't want to see group messages and developer has created channelid associated with groupmessage.
+                .setAutoCancel(true); //Gjee:if you provide this one, it will be visible on tray
+
+        NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(context);
+        notificationManagerCompat.notify(notificationId,builder.build()); //GJEE:notification id is used to cancel the notification from code, or you can update the notification
+    }
+
+    public void triggerNotification(Class targetNotificationActivity, String channelId, String title, String text, String bigText, int priority, boolean autoCancel, int notificationId, int pendingIntentFlag){
+
+        Intent intent = new Intent(context, targetNotificationActivity);
+        intent.putExtra("count", title);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, pendingIntentFlag);
+
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context,channelId)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_icon_large))
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(bigText))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setChannelId(channelId)
+                .setAutoCancel(true);
+
+        notificationManagerCompat.notify(notificationId,builder.build());
+    }
+
+    public void updateWithPicture(Class targetNotificationActivity,String title,String text, String channelId, int notificationId, String bigpictureString, int pendingIntentflag) {
+
+        Intent intent = new Intent(context, targetNotificationActivity);
+        intent.putExtra("count", title);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context,channelId)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_icon_large))
+                .setContentTitle(title)
+                .setContentText(text)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setChannelId(channelId)
+                .setAutoCancel(true);
+
+        Bitmap androidImage = BitmapFactory.decodeResource(context.getResources(), R.drawable.big_pic);
+        builder.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(androidImage).setBigContentTitle(bigpictureString));
+        notificationManager.notify(notificationId, builder.build());
+    }
+
+    public void cancelNotification(int notificationId){
+        notificationManager.cancel(notificationId);
+    }
+
+
+
+
+}
+
+
+========Step2: Drive from MyApplication======
+public class MyApplication extends Application {
+
+    MyAppsNotificationManager  myAppsNotificationManager;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        myAppsNotificationManager = MyAppsNotificationManager.getInstance(this);
+        myAppsNotificationManager.registerNotificationChannelChannel(
+                getString(R.string.NEWS_CHANNEL_ID),
+                getString(R.string.CHANNEL_NEWS),
+                getString(R.string.CHANNEL_DESCRIPTION));
+    }
+
+    public void triggerNotification(Class targetNotificationActivity, String channelId, String title, String text, String bigText, int priority, boolean autoCancel, int notificationId, int pendingIntentFlag){
+        myAppsNotificationManager.triggerNotification(targetNotificationActivity,channelId,title,text, bigText, priority, autoCancel,notificationId, pendingIntentFlag);
+    }
+
+    public void triggerNotification(Class targetNotificationActivity, String channelId, String title, String text, String bigText, int priority, boolean autoCancel, int notificationId){
+        myAppsNotificationManager.triggerNotification(targetNotificationActivity,channelId,title,text, bigText, priority, autoCancel,notificationId);
+    }
+
+    public void updateNotification(Class targetNotificationActivity,String title,String text, String channelId, int notificationId, String bigpictureString, int pendingIntentflag){
+        myAppsNotificationManager.updateWithPicture(targetNotificationActivity, title, text, channelId, notificationId, bigpictureString, pendingIntentflag);
+    }
+
+    public void cancelNotification(int notificaitonId){
+        myAppsNotificationManager.cancelNotification(notificaitonId);
+    }
+
+
+================//Step3: : MainActivity
+public class MainActivity extends AppCompatActivity {
+
+
+    Button buttonTriggerNotification, buttonCancel, buttonUpdate;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        buttonTriggerNotification = (Button)findViewById(R.id.buttonTriggerNotification);
+        buttonCancel = (Button)findViewById(R.id.buttonCancel);
+        buttonUpdate = (Button)findViewById(R.id.buttonUpdate);
+
+        buttonTriggerNotification.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+
+                ((MyApplication)getApplication()).triggerNotification(NotificationDetailsActivity.class,
+                        getString(R.string.NEWS_CHANNEL_ID),
+                        "Sample Notification",
+                        "This is a sample notification app",
+                        "This is a sample notification created by Codetutor for demonstration of how to trigger notifications in Android app ",
+                         NotificationCompat.PRIORITY_HIGH,
+                        true,
+                         getResources().getInteger(R.integer.notificationId),
+                        PendingIntent.FLAG_UPDATE_CURRENT);
+            }
+        });
+
+        buttonCancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ((MyApplication)getApplication()).cancelNotification(getResources().getInteger(R.integer.notificationId));
+            }
+        });
+
+        buttonUpdate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ((MyApplication)getApplication()).updateNotification(NotificationDetailsActivity.class,
+                        "Updated Notification",
+                        "This is updatedNotification",
+                        getString(R.string.NEWS_CHANNEL_ID),
+                        getResources().getInteger(R.integer.notificationId),
+                        "This is a updated information for bigpicture String",
+                        PendingIntent.FLAG_UPDATE_CURRENT);
+            }
+        });
+
+
+
+    }
+}
